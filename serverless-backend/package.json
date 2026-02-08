@@ -1,0 +1,41 @@
+{
+  "name": "peertube-serverless-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Production-grade serverless PeerTube-like backend on AWS",
+  "workspaces": [
+    "infra",
+    "services/api",
+    "services/worker",
+    "packages/shared",
+    "tests"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "format": "prettier --check \"**/*.{ts,js,json,md,yml,yaml}\"",
+    "format:fix": "prettier --write \"**/*.{ts,js,json,md,yml,yaml}\"",
+    "synth": "npm --workspace infra run synth",
+    "deploy:dev": "npm --workspace infra run deploy:dev",
+    "deploy:stage": "npm --workspace infra run deploy:stage",
+    "deploy:prod": "npm --workspace infra run deploy:prod"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.1",
+    "@typescript-eslint/eslint-plugin": "^8.23.0",
+    "@typescript-eslint/parser": "^8.23.0",
+    "eslint": "^9.20.1",
+    "eslint-config-prettier": "^10.0.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.5.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

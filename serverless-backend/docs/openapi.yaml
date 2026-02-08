@@ -1,0 +1,777 @@
+openapi: 3.1.0
+info:
+  title: PeerTube Serverless Backend API
+  version: 0.1.0
+  description: >
+    Serverless PeerTube-like backend API on AWS. Authentication is handled by Cognito,
+    and protected routes require a valid JWT bearer token.
+servers:
+  - url: https://{apiId}.execute-api.eu-central-1.amazonaws.com
+    variables:
+      apiId:
+        default: example
+security:
+  - CognitoJWT: []
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /auth/bootstrap-admin:
+    post:
+      summary: Bootstrap first admin user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, bootstrapToken]
+              properties:
+                email:
+                  type: string
+                  format: email
+                bootstrapToken:
+                  type: string
+      responses:
+        '200':
+          description: Admin promoted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+        '403':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /channels:
+    get:
+      summary: List channels
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/CursorParam'
+      responses:
+        '200':
+          description: Channels list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListChannelsEnvelope'
+    post:
+      summary: Create channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChannelRequest'
+      responses:
+        '201':
+          description: Channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelEnvelope'
+
+  /channels/{channelId}:
+    patch:
+      summary: Update channel metadata
+      parameters:
+        - $ref: '#/components/parameters/ChannelIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChannelRequest'
+      responses:
+        '200':
+          description: Channel updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelEnvelope'
+
+  /videos:
+    get:
+      summary: List videos or search videos
+      security: []
+      parameters:
+        - name: channelId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/CursorParam'
+      responses:
+        '200':
+          description: Video list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListVideosEnvelope'
+
+  /videos/drafts:
+    post:
+      summary: Create a video draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoDraftRequest'
+      responses:
+        '201':
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoEnvelope'
+
+  /videos/{videoId}:
+    get:
+      summary: Get video by id
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      responses:
+        '200':
+          description: Video
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoEnvelope'
+
+  /videos/{videoId}/upload/initiate:
+    post:
+      summary: Initiate multipart upload
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiateUploadRequest'
+      responses:
+        '200':
+          description: Multipart upload URLs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitiateUploadEnvelope'
+
+  /videos/{videoId}/upload/complete:
+    post:
+      summary: Complete multipart upload and trigger processing pipeline
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteUploadRequest'
+      responses:
+        '202':
+          description: Accepted for async processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /videos/{videoId}/publish:
+    post:
+      summary: Publish video
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visibility:
+                  type: string
+                  enum: [PUBLIC, UNLISTED, PRIVATE]
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /videos/{videoId}/unpublish:
+    post:
+      summary: Unpublish video
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      responses:
+        '200':
+          description: Unpublished
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /videos/{videoId}/playback:
+    get:
+      summary: Get HLS playback manifest URL
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      responses:
+        '200':
+          description: Playback URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackEnvelope'
+
+  /videos/{videoId}/views:
+    post:
+      summary: Register a video view (deduped)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /videos/{videoId}/comments:
+    get:
+      summary: List comments for a video
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/CursorParam'
+      responses:
+        '200':
+          description: Comment list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListCommentsEnvelope'
+    post:
+      summary: Post a comment
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentEnvelope'
+
+  /videos/{videoId}/comments/{commentId}:
+    delete:
+      summary: Delete comment
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  /moderation/reports:
+    post:
+      summary: Report content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [videoId, reason]
+              properties:
+                videoId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Report opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /moderation/videos/{videoId}/takedown:
+    post:
+      summary: Takedown video
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      responses:
+        '200':
+          description: Video taken down
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /moderation/videos/{videoId}/hide:
+    post:
+      summary: Hide video
+      parameters:
+        - $ref: '#/components/parameters/VideoIdParam'
+      responses:
+        '200':
+          description: Video hidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /moderation/users/{userId}/ban:
+    post:
+      summary: Ban user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                days:
+                  type: integer
+      responses:
+        '200':
+          description: User banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /activitypub/actor/{actorId}:
+    get:
+      summary: Get ActivityPub actor object
+      security: []
+      parameters:
+        - name: actorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Actor document
+          content:
+            application/activity+json:
+              schema:
+                type: object
+
+  /activitypub/inbox:
+    post:
+      summary: Receive inbound ActivityPub activity
+      security: []
+      parameters:
+        - name: Signature
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: Date
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/activity+json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Accepted or duplicate ignored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+  /activitypub/outbox:
+    post:
+      summary: Queue outbound ActivityPub delivery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutboxRequest'
+      responses:
+        '202':
+          description: Delivery queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkEnvelope'
+
+components:
+  securitySchemes:
+    CognitoJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    VideoIdParam:
+      name: videoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ChannelIdParam:
+      name: channelId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    CursorParam:
+      name: cursor
+      in: query
+      schema:
+        type: string
+
+  responses:
+    ErrorResponse:
+      description: Standard error envelope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    OkEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    Channel:
+      type: object
+      required: [channelId, ownerUserId, handle, displayName, createdAt, updatedAt]
+      properties:
+        channelId:
+          type: string
+          format: uuid
+        ownerUserId:
+          type: string
+        handle:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Video:
+      type: object
+      required: [videoId, channelId, ownerUserId, title, visibility, state, createdAt, updatedAt]
+      properties:
+        videoId:
+          type: string
+          format: uuid
+        channelId:
+          type: string
+          format: uuid
+        ownerUserId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        visibility:
+          type: string
+          enum: [PUBLIC, UNLISTED, PRIVATE]
+        state:
+          type: string
+          enum: [DRAFT, UPLOADING, UPLOADED, TRANSCODING, PUBLISHED, FAILED, HIDDEN, TAKEDOWN]
+        hlsManifestKey:
+          type: string
+        thumbnailKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Comment:
+      type: object
+      required: [commentId, videoId, authorUserId, body, createdAt]
+      properties:
+        commentId:
+          type: string
+        videoId:
+          type: string
+          format: uuid
+        authorUserId:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateChannelRequest:
+      type: object
+      required: [handle, displayName]
+      properties:
+        handle:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+
+    UpdateChannelRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        description:
+          type: string
+
+    CreateVideoDraftRequest:
+      type: object
+      required: [channelId, title]
+      properties:
+        channelId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        visibility:
+          type: string
+          enum: [PUBLIC, UNLISTED, PRIVATE]
+
+    InitiateUploadRequest:
+      type: object
+      required: [fileName, contentType, sizeBytes, parts]
+      properties:
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+        parts:
+          type: integer
+
+    CompleteUploadRequest:
+      type: object
+      required: [uploadId, parts]
+      properties:
+        uploadId:
+          type: string
+        parts:
+          type: array
+          items:
+            type: object
+            required: [ETag, PartNumber]
+            properties:
+              ETag:
+                type: string
+              PartNumber:
+                type: integer
+
+    OutboxRequest:
+      type: object
+      required: [actorId, type, object, to]
+      properties:
+        actorId:
+          type: string
+        type:
+          type: string
+          enum: [Follow, Undo, Create, Announce]
+        object:
+          type: object
+          additionalProperties: true
+        to:
+          type: array
+          items:
+            type: string
+
+    ChannelEnvelope:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Channel'
+
+    VideoEnvelope:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Video'
+
+    CommentEnvelope:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Comment'
+
+    ListChannelsEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Channel'
+            cursor:
+              type: string
+
+    ListVideosEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Video'
+            cursor:
+              type: string
+
+    ListCommentsEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Comment'
+            cursor:
+              type: string
+
+    InitiateUploadEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            videoId:
+              type: string
+            sourceKey:
+              type: string
+            uploadId:
+              type: string
+            partUrls:
+              type: array
+              items:
+                type: object
+                properties:
+                  partNumber:
+                    type: integer
+                  url:
+                    type: string
+            expiresInSeconds:
+              type: integer
+
+    PlaybackEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            videoId:
+              type: string
+            manifestUrl:
+              type: string
+            thumbnailUrl:
+              type: string

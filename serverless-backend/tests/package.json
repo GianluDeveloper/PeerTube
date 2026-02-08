@@ -1,0 +1,22 @@
+{
+  "name": "@pt/tests",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --ext .ts",
+    "test": "jest --config jest.config.cjs --runInBand",
+    "test:integration": "jest --config jest.config.cjs --runInBand integration"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.750.0",
+    "@aws-sdk/client-dynamodb": "^3.750.0",
+    "@aws-sdk/client-eventbridge": "^3.750.0",
+    "@aws-sdk/client-mediaconvert": "^3.750.0",
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/client-sqs": "^3.750.0",
+    "@aws-sdk/lib-dynamodb": "^3.750.0",
+    "@pt/shared": "file:../packages/shared",
+    "aws-sdk-client-mock": "^4.1.0"
+  }
+}

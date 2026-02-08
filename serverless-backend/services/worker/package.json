@@ -1,0 +1,21 @@
+{
+  "name": "@pt/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "test": "echo \"worker tests run from tests workspace\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.750.0",
+    "@aws-sdk/client-eventbridge": "^3.750.0",
+    "@aws-sdk/client-mediaconvert": "^3.750.0",
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/client-sqs": "^3.750.0",
+    "@aws-sdk/lib-dynamodb": "^3.750.0",
+    "@pt/shared": "file:../../packages/shared"
+  }
+}

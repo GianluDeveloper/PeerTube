@@ -1,0 +1,19 @@
+{
+  "name": "@pt/infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint bin lib --ext .ts",
+    "test": "echo \"infra tests not defined\"",
+    "synth": "cdk synth",
+    "deploy:dev": "cdk deploy --context stage=dev --require-approval never",
+    "deploy:stage": "cdk deploy --context stage=stage --require-approval never",
+    "deploy:prod": "cdk deploy --context stage=prod"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.180.0",
+    "constructs": "^10.4.2",
+    "source-map-support": "^0.5.21"
+  }
+}
