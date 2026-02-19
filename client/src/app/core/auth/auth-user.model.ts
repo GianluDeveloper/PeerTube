@@ -44,7 +44,7 @@ export class AuthUser extends User implements ServerMyUserModel {
     return hasUserRight(this.role.id, right)
   }
 
-  canManage (user: ServerUserModel) {
+  canManageUser (user: ServerUserModel) {
     const myRole = this.role.id
 
     if (myRole === UserRole.ADMINISTRATOR) return true
@@ -58,10 +58,14 @@ export class AuthUser extends User implements ServerMyUserModel {
   }
 
   isEditorOfChannel (channel: Pick<VideoChannel, 'id'>) {
+    if (!channel) return false
+
     return this.videoChannelCollaborations.some(c => c.id === channel.id)
   }
 
   isOwnerOfChannel (channel: Pick<VideoChannel, 'id'>) {
+    if (!channel) return true
+
     return this.videoChannels.some(c => c.id === channel.id)
   }
 }

@@ -64,7 +64,7 @@ export class VideoManageResolver {
           async ([
             video,
             videoSource,
-            allUserChannels,
+            userChannels,
             captions,
             chapters,
             live,
@@ -85,7 +85,7 @@ export class VideoManageResolver {
 
             return {
               video,
-              userChannels: allUserChannels.filter(c => c.ownerAccountId === video.channel.ownerAccount.id),
+              userChannels,
               captions,
               chapters,
               videoSource,
